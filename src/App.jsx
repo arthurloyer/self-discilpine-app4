@@ -1,10 +1,9 @@
 import React, { useEffect, useState } from "react";
 
-// petite fonction utilitaire pour fusionner les classes
+// --- Utils ---
 const cls = (...arr) => arr.filter(Boolean).join(" ");
 const todayKey = () => new Date().toISOString().slice(0, 10);
 
-// Hook custom pour stocker en localStorage
 function useLocalState(key, initial) {
   const [state, setState] = useState(() => {
     try {
@@ -26,14 +25,9 @@ function useLocalState(key, initial) {
   return [state, setState];
 }
 
-// composants UI de base
+// --- UI Components ---
 const Card = ({ className, children }) => (
-  <div
-    className={cls(
-      "rounded-2xl shadow-md p-4 md:p-6 bg-white",
-      className
-    )}
-  >
+  <div className={cls("rounded-2xl shadow-md p-4 md:p-6 bg-white", className)}>
     {children}
   </div>
 );
@@ -58,7 +52,6 @@ const Input = ({ className = "", ...props }) => (
   />
 );
 
-// ✅ composant Button corrigé
 const Button = ({ className = "", ...props }) => (
   <button
     {...props}
@@ -69,7 +62,16 @@ const Button = ({ className = "", ...props }) => (
   />
 );
 
-const tabs = ["Dashboard", "Hydratation", "Notes"];
+// --- Tabs ---
+const tabs = [
+  "Dashboard",
+  "Hydratation",
+  "Musculation",
+  "Nutrition",
+  "Sommeil",
+  "Lookmaxing",
+  "Notes",
+];
 
 export default function App() {
   const [tab, setTab] = useLocalState("app.tab", "Dashboard");
@@ -114,17 +116,17 @@ export default function App() {
       <main className="max-w-5xl mx-auto px-4 py-6 grid gap-6">
         {tab === "Dashboard" && <Dashboard />}
         {tab === "Hydratation" && <Hydration />}
+        {tab === "Musculation" && <Musculation />}
+        {tab === "Nutrition" && <Nutrition />}
+        {tab === "Sommeil" && <Sommeil />}
+        {tab === "Lookmaxing" && <Lookmaxing />}
         {tab === "Notes" && <Notes />}
       </main>
-
-      <footer className="py-8 text-center text-xs text-gray-500">
-        MVP – hors ligne, données stockées localement.
-      </footer>
     </div>
   );
 }
 
-/* ------------ Hydratation ------------- */
+// --- Hydratation ---
 function Hydration() {
   const [goalMl, setGoalMl] = useLocalState("hydr.goal", 2500);
   const [logsByDay, setLogsByDay] = useLocalState("hydr.logs", {});
@@ -145,58 +147,228 @@ function Hydration() {
   return (
     <Card>
       <H2>Hydratation</H2>
-      <div className="flex items-end gap-4">
-        <div className="grow">
-          <Label>Objectif (mL)</Label>
-          <Input
-            type="number"
-            min={500}
-            step={100}
-            value={goalMl}
-            onChange={(e) => setGoalMl(parseInt(e.target.value || 0))}
-          />
-          <div className="mt-4">
-            <div className="flex justify-between text-sm mb-1">
-              <span>{ml} mL</span>
-              <span>{pct}%</span>
-            </div>
-            <div className="w-full h-3 bg-gray-200 rounded-full overflow-hidden">
-              <div
-                className="h-full bg-black"
-                style={{ width: pct + "%" }}
-              />
-            </div>
-          </div>
-        </div>
-        <div className="grid gap-2">
-          {[250, 500, 750].map((a) => (
-            <Button key={a} onClick={() => add(a)}>
-              +{a} mL
-            </Button>
-          ))}
-        </div>
+      <p className="text-sm text-gray-600 mb-3">
+        Objectif : {goalMl} mL — Aujourd’hui : {ml} mL
+      </p>
+      <div className="flex gap-2">
+        {[250, 500, 750].map((a) => (
+          <Button key={a} onClick={() => add(a)}>
+            +{a} mL
+          </Button>
+        ))}
+      </div>
+      <div className="mt-3 w-full h-3 bg-gray-200 rounded-full overflow-hidden">
+        <div
+          className="h-full bg-black"
+          style={{ width: pct + "%" }}
+        />
       </div>
     </Card>
   );
 }
 
-/* -------------- Notes ---------------- */
+// --- Musculation ---
+function Musculation() {
+  const [sessions, setSessions] = useLocalState("muscu.sessions", []);
+  const [newSession, setNewSession] = useState("");
+  const [rest, setRest] = useState(0);
+
+  function addSession() {
+    if (!newSession.trim()) return;
+    setSessions([...sessions, { name: newSession.trim(), done: false }]);
+    setNewSession("");
+  }
+
+  function toggle(i) {
+    setSessions(
+      sessions.map((s, idx) =>
+        idx === i ? { ...s, done: !s.done } : s
+      )
+    );
+  }
+
+  function startRest(sec = 60) {
+    setRest(sec);
+    const timer = setInterval(() => {
+      setRest((r) => {
+        if (r <= 1) {
+          clearInterval(timer);
+          return 0;
+        }
+        return r - 1;
+      });
+    }, 1000);
+  }
+
+  return (
+    <Card>
+      <H2>Musculation</H2>
+      <div className="flex gap-2 mb-3">
+        <Input
+          value={newSession}
+          onChange={(e) => setNewSession(e.target.value)}
+          placeholder="Ajouter un exercice..."
+        />
+        <Button onClick={addSession} className="bg-black text-white">
+          +
+        </Button>
+      </div>
+      <ul className="space-y-2">
+        {sessions.map((s, i) => (
+          <li key={i} className="flex items-center gap-2">
+            <input
+              type="checkbox"
+              checked={s.done}
+              onChange={() => toggle(i)}
+            />
+            <span
+              className={cls(s.done && "line-through text-gray-400")}
+            >
+              {s.name}
+            </span>
+          </li>
+        ))}
+      </ul>
+      {rest > 0 ? (
+        <p className="mt-4 text-center">Repos : {rest}s</p>
+      ) : (
+        <div className="mt-4 flex gap-2">
+          {[30, 60, 90].map((t) => (
+            <Button
+              key={t}
+              onClick={() => startRest(t)}
+              className="bg-gray-200"
+            >
+              {t}s
+            </Button>
+          ))}
+        </div>
+      )}
+    </Card>
+  );
+}
+
+// --- Nutrition ---
+function Nutrition() {
+  const [goal, setGoal] = useLocalState("nut.goal", {
+    calories: 2000,
+    protein: 120,
+    carbs: 250,
+    fat: 60,
+  });
+  const [log, setLog] = useLocalState("nut.log", []);
+  const [food, setFood] = useState("");
+
+  function addFood() {
+    if (!food.trim()) return;
+    setLog([...log, { text: food.trim() }]);
+    setFood("");
+  }
+
+  return (
+    <Card>
+      <H2>Nutrition</H2>
+      <p className="text-sm text-gray-600">
+        Objectif : {goal.calories} kcal, {goal.protein}g protéines
+      </p>
+      <div className="flex gap-2 mt-2">
+        <Input
+          value={food}
+          onChange={(e) => setFood(e.target.value)}
+          placeholder="Ajouter un aliment..."
+        />
+        <Button onClick={addFood} className="bg-black text-white">
+          +
+        </Button>
+      </div>
+      <ul className="mt-3 list-disc pl-5 text-sm">
+        {log.map((f, i) => (
+          <li key={i}>{f.text}</li>
+        ))}
+      </ul>
+    </Card>
+  );
+}
+
+// --- Sommeil ---
+function Sommeil() {
+  const [hours, setHours] = useLocalState("sleep.goal", 8);
+  const [sleep, setSleep] = useLocalState("sleep.log", {});
+
+  const day = todayKey();
+  const got = sleep[day]?.h ?? 0;
+
+  function add(h) {
+    setSleep({ ...sleep, [day]: { h } });
+  }
+
+  return (
+    <Card>
+      <H2>Sommeil</H2>
+      <p className="text-sm text-gray-600 mb-2">
+        Objectif : {hours}h / Nuit
+      </p>
+      <div className="flex gap-2">
+        {[6, 7, 8, 9].map((h) => (
+          <Button key={h} onClick={() => add(h)}>
+            {h}h
+          </Button>
+        ))}
+      </div>
+      <p className="mt-3">
+        Aujourd’hui : {got}h {got >= hours ? "✅" : "❌"}
+      </p>
+    </Card>
+  );
+}
+
+// --- Lookmaxing ---
+function Lookmaxing() {
+  const [tasks, setTasks] = useLocalState("look.tasks", [
+    "Chin tucks",
+    "Neck curls",
+    "Posture",
+  ]);
+  const [done, setDone] = useLocalState("look.done", {});
+
+  const day = todayKey();
+  const today = done[day] || {};
+
+  function toggle(t) {
+    const copy = { ...done };
+    copy[day] = { ...today, [t]: !today[t] };
+    setDone(copy);
+  }
+
+  return (
+    <Card>
+      <H2>Lookmaxing</H2>
+      <ul className="space-y-2">
+        {tasks.map((t, i) => (
+          <li key={i} className="flex gap-2 items-center">
+            <input
+              type="checkbox"
+              checked={today[t] || false}
+              onChange={() => toggle(t)}
+            />
+            <span
+              className={cls(today[t] && "line-through text-gray-400")}
+            >
+              {t}
+            </span>
+          </li>
+        ))}
+      </ul>
+    </Card>
+  );
+}
+
+// --- Notes ---
 function Notes() {
-  const defaultCats = ["À faire", "À acheter", "Idées"];
-  const [cats] = useLocalState("notes.cats", defaultCats);
-  const [active, setActive] = useLocalState("notes.active", defaultCats[0]);
+  const cats = ["À faire", "À acheter", "Idées"];
+  const [active, setActive] = useLocalState("notes.active", cats[0]);
   const [itemsByCat, setItemsByCat] = useLocalState("notes.items", {});
   const [newItem, setNewItem] = useState("");
-
-  useEffect(() => {
-    setItemsByCat((prev) => {
-      const next = { ...prev };
-      defaultCats.forEach((c) => {
-        if (!next[c]) next[c] = [];
-      });
-      return next;
-    });
-  }, []);
 
   function addItem() {
     if (!newItem.trim()) return;
@@ -225,18 +397,10 @@ function Notes() {
     });
   }
 
-  function remove(id) {
-    setItemsByCat((prev) => {
-      const next = { ...prev };
-      next[active] = (next[active] || []).filter((it) => it.id !== id);
-      return next;
-    });
-  }
-
   return (
     <Card>
       <H2>Notes</H2>
-      <div className="flex gap-2 overflow-x-auto">
+      <div className="flex gap-2 mb-3">
         {cats.map((c) => (
           <Button
             key={c}
@@ -247,56 +411,37 @@ function Notes() {
           </Button>
         ))}
       </div>
-      <div className="mt-4 grid gap-2">
-        <div className="flex gap-2">
-          <Input
-            value={newItem}
-            onChange={(e) => setNewItem(e.target.value)}
-            placeholder={`Ajouter à "${active}"...`}
-          />
-          <Button
-            onClick={addItem}
-            className="bg-black text-white border-black"
-          >
-            Ajouter
-          </Button>
-        </div>
-        <div className="grid gap-2 max-h-72 overflow-auto pr-2">
-          {(itemsByCat[active] || []).map((it) => (
-            <label
-              key={it.id}
-              className="flex items-center justify-between border rounded-xl px-3 py-2"
-            >
-              <span className="flex items-center gap-3">
-                <input
-                  type="checkbox"
-                  checked={it.done}
-                  onChange={() => toggle(it.id)}
-                />
-                <span
-                  className={cls(it.done && "line-through text-gray-400")}
-                >
-                  {it.text}
-                </span>
-              </span>
-              <Button
-                className="text-red-600 border-red-400"
-                onClick={() => remove(it.id)}
-              >
-                Suppr
-              </Button>
-            </label>
-          ))}
-          {(itemsByCat[active] || []).length === 0 && (
-            <div className="text-sm text-gray-500">Aucun élément.</div>
-          )}
-        </div>
+      <div className="flex gap-2 mb-3">
+        <Input
+          value={newItem}
+          onChange={(e) => setNewItem(e.target.value)}
+          placeholder={`Ajouter à "${active}"...`}
+        />
+        <Button onClick={addItem} className="bg-black text-white">
+          +
+        </Button>
       </div>
+      <ul className="space-y-2">
+        {(itemsByCat[active] || []).map((it) => (
+          <li key={it.id} className="flex gap-2 items-center">
+            <input
+              type="checkbox"
+              checked={it.done}
+              onChange={() => toggle(it.id)}
+            />
+            <span
+              className={cls(it.done && "line-through text-gray-400")}
+            >
+              {it.text}
+            </span>
+          </li>
+        ))}
+      </ul>
     </Card>
   );
 }
 
-/* ------------- Dashboard ------------- */
+// --- Dashboard ---
 function Dashboard() {
   const day = todayKey();
   const hydrLogs = JSON.parse(localStorage.getItem("hydr.logs") || "{}");
@@ -313,32 +458,29 @@ function Dashboard() {
   const lookToday = look[day] || {};
   const lookDone = Object.values(lookToday).some((v) => v);
 
+  const sleep = JSON.parse(localStorage.getItem("sleep.log") || "{}");
+  const goalSleep = JSON.parse(localStorage.getItem("sleep.goal") || "8");
+  const sleepH = sleep[day]?.h ?? 0;
+  const sleepDone = sleepH >= goalSleep;
+
   const score =
     (hydrDone ? 20 : 0) +
     (notesDone ? 20 : 0) +
-    (lookDone ? 20 : 0);
+    (lookDone ? 20 : 0) +
+    (sleepDone ? 20 : 0);
 
   return (
-    <div className="grid gap-6">
-      <Card>
-        <H2>Dashboard</H2>
-        <div className="text-3xl font-bold mb-2">
-          Score quotidien : {score}/100
-        </div>
-        <ul className="list-disc pl-5 space-y-1 text-sm">
-          <li>
-            Hydratation :{" "}
-            {hydrDone ? "✅ Objectif atteint" : "❌ Pas encore"}
-          </li>
-          <li>
-            Notes : {notesDone ? "✅ Éléments notés" : "❌ Vide"}
-          </li>
-          <li>
-            Lookmaxing :{" "}
-            {lookDone ? "✅ Tâches cochées" : "❌ Rien pour l’instant"}
-          </li>
-        </ul>
-      </Card>
-    </div>
+    <Card>
+      <H2>Dashboard</H2>
+      <p className="text-lg font-semibold mb-2">
+        Score du jour : {score}/100
+      </p>
+      <ul className="list-disc pl-5 text-sm">
+        <li>Hydratation : {hydrDone ? "✅ OK" : "❌ Pas atteint"}</li>
+        <li>Sommeil : {sleepDone ? "✅ OK" : "❌ Pas atteint"}</li>
+        <li>Notes : {notesDone ? "✅ OK" : "❌ Vide"}</li>
+        <li>Lookmaxing : {lookDone ? "✅ OK" : "❌ Pas encore"}</li>
+      </ul>
+    </Card>
   );
 }
