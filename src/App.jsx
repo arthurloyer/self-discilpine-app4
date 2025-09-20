@@ -1,46 +1,32 @@
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useMemo, useRef, useState } from "react";
 
-const cls = (...arr) => arr.filter(Boolean).join(" ");
+/* ---------- Helpers ---------- */
+const cx = (...a) => a.filter(Boolean).join(" ");
 const todayKey = () => new Date().toISOString().slice(0, 10);
-
 function useLocalState(key, initial) {
-  const [state, setState] = useState(() => {
+  const [state, set] = useState(() => {
     try {
       const raw = localStorage.getItem(key);
       return raw ? JSON.parse(raw) : (typeof initial === "function" ? initial() : initial);
-    } catch {
-      return typeof initial === "function" ? initial() : initial;
-    }
+    } catch { return typeof initial === "function" ? initial() : initial; }
   });
-  useEffect(() => {
-    try { localStorage.setItem(key, JSON.stringify(state)); } catch {}
-  }, [key, state]);
-  return [state, setState];
+  useEffect(() => { try { localStorage.setItem(key, JSON.stringify(state)); } catch {} }, [key, state]);
+  return [state, set];
 }
+const Card   = ({className, children}) => <div className={cx("rounded-2xl shadow-sm md:shadow-md p-5 md:p-6 bg-white dark:bg-gray-800", className)}>{children}</div>;
+const H2     = ({children}) => <h2 className="text-xl md:text-2xl font-semibold tracking-tight mb-3">{children}</h2>;
+const Label  = ({children}) => <label className="text-sm font-medium text-gray-700 dark:text-gray-300">{children}</label>;
+const Input  = ({className="", ...p}) => <input {...p} className={cx("w-full border rounded-xl px-3 py-2 focus:outline-none focus:ring dark:bg-gray-700 dark:border-gray-600", className)} />;
+const Button = ({className="", ...p}) => <button {...p} className={cx("px-3 py-2 rounded-xl border bg-gray-50 hover:bg-gray-100 dark:bg-gray-700 dark:text-gray-100 active:scale-[.98] transition", className)} />;
 
-const Card = ({ className, children }) => (
-  <div className={cls("rounded-2xl shadow-md p-4 md:p-6 bg-white dark:bg-gray-800", className)}>{children}</div>
-);
-const H2 = ({ children }) => (
-  <h2 className="text-xl md:text-2xl font-semibold tracking-tight mb-3">{children}</h2>
-);
-const Label = ({ children }) => (
-  <label className="text-sm font-medium text-gray-700 dark:text-gray-300">{children}</label>
-);
-const Input = ({ className = "", ...props }) => (
-  <input {...props} className={cls("w-full border rounded-xl px-3 py-2 focus:outline-none focus:ring dark:bg-gray-700 dark:border-gray-600", className)} />
-);
-const Button = ({ className = "", ...props }) => (
-  <button {...props} className={cls("px-3 py-2 rounded-xl border bg-gray-50 hover:bg-gray-100 dark:bg-gray-700 dark:text-gray-100 active:scale-[.98] transition", className)} />
-);
-
-const tabs = ["Dashboard","Hydratation","Notes"];
+/* ---------- App Shell ---------- */
+const tabs = ["Dashboard","Hydratation","Musculation","Nutrition","Sommeil","Lookmaxing","Notes","Business"];
 
 export default function App() {
   const [tab, setTab] = useLocalState("app.tab", "Dashboard");
   return (
     <div className="min-h-screen bg-gray-50 dark:bg-gray-900 text-gray-900 dark:text-gray-100">
-      <header className="sticky top-0 z-20 backdrop-blur bg-white/70 dark:bg-gray-800/80 border-b dark:border-gray-700">
+      <header className="sticky top-0 z-20 backdrop-blur bg-white/70 dark:bg-gray-900/80 border-b border-gray-200 dark:border-gray-800">
         <div className="max-w-5xl mx-auto px-4 py-4 flex items-center justify-between">
           <div className="flex items-center gap-2">
             <div className="w-8 h-8 rounded-2xl bg-black text-white grid place-items-center font-bold">∆</div>
@@ -48,7 +34,7 @@ export default function App() {
           </div>
           <div className="hidden md:flex gap-2">
             {tabs.map(t => (
-              <Button key={t} onClick={() => setTab(t)} className={cls(tab===t && "bg-black text-white border-black")}>{t}</Button>
+              <Button key={t} onClick={() => setTab(t)} className={cx("whitespace-nowrap", tab===t && "bg-black text-white border-black")}>{t}</Button>
             ))}
           </div>
           <div className="md:hidden">
@@ -60,157 +46,83 @@ export default function App() {
       </header>
 
       <main className="max-w-5xl mx-auto px-4 py-6 grid gap-6">
-        {tab === "Dashboard" && <Dashboard />}
-        {tab === "Hydratation" && <Hydration />}
-        {tab === "Notes" && <Notes />}
+        {tab==="Dashboard"   && <Dashboard />}
+        {tab==="Hydratation" && <Hydration />}
+        {tab==="Musculation" && <Musculation />}
+        {tab==="Nutrition"   && <Nutrition />}
+        {tab==="Sommeil"     && <Sleep />}
+        {tab==="Lookmaxing"  && <Lookmaxing />}
+        {tab==="Notes"       && <Notes />}
+        {tab==="Business"    && <Business />}
       </main>
-      <footer className="py-8 text-center text-xs text-gray-500 dark:text-gray-400">MVP – hors ligne, données stockées localement.</footer>
+
+      <footer className="py-10 text-center text-xs text-gray-500 dark:text-gray-400">
+        MVP — hors ligne, données stockées localement.
+      </footer>
     </div>
   );
 }
 
-// Hydration
+/* ======================= HYDRATATION ======================= */
 function Hydration(){
   const [goalMl, setGoalMl] = useLocalState("hydr.goal", 2500);
   const [logsByDay, setLogsByDay] = useLocalState("hydr.logs", {});
   const day = todayKey();
   const ml = logsByDay[day]?.ml ?? 0;
-  const pct = Math.min(100, Math.round(ml / goalMl * 100));
+  const pct = Math.min(100, Math.round((ml/(goalMl||1))*100));
 
   function add(amount){
-    setLogsByDay(prev => {
+    setLogsByDay(prev=>{
       const next = {...prev};
       const d = next[day] ?? { ml:0 };
       d.ml = Math.max(0, d.ml + amount);
       next[day] = d;
       return next;
-    });
+    })
   }
 
   return (
-    <Card>
-      <H2>Hydratation</H2>
-      <div className="flex items-end gap-4">
-        <div className="grow">
-          <Label>Objectif (mL)</Label>
-          <Input type="number" min={500} step={100} value={goalMl} onChange={e=>setGoalMl(parseInt(e.target.value||0))} />
-          <div className="mt-4">
-            <div className="flex justify-between text-sm mb-1"><span>{ml} mL</span><span>{pct}%</span></div>
-            <div className="w-full h-3 bg-gray-200 dark:bg-gray-600 rounded-full overflow-hidden">
-              <div className="h-full bg-black dark:bg-white" style={{width: pct+"%"}} />
+    <div className="grid lg:grid-cols-2 gap-6">
+      <Card>
+        <H2>Hydratation quotidienne</H2>
+        <div className="flex items-end gap-4">
+          <div className="grow">
+            <Label>Objectif (mL)</Label>
+            <Input type="number" min={500} step={100} value={goalMl} onChange={e=>setGoalMl(parseInt(e.target.value||0))} />
+            <div className="mt-4">
+              <div className="flex justify-between text-sm mb-1"><span>{ml} mL</span><span>{pct}%</span></div>
+              <div className="w-full h-3 bg-gray-200 dark:bg-gray-700 rounded-full overflow-hidden">
+                <div className="h-full bg-black dark:bg-white" style={{width: pct+"%"}} />
+              </div>
             </div>
           </div>
+          <div className="grid gap-2">
+            {[250,330,500,750].map(a => <Button key={a} onClick={()=>add(a)}>{`+${a} mL`}</Button>)}
+            <Button className="border-red-500 text-red-600" onClick={()=>add(-250)}>–250 mL</Button>
+          </div>
         </div>
-        <div className="grid gap-2">
-          {[250, 500, 750].map(a => (
-            <Button key={a} onClick={()=>add(a)}>{`+${a} mL`}</Button>
-          ))}
-        </div>
-      </div>
-    </Card>
-  );
-}
+      </Card>
 
-// Notes
-function Notes(){
-  const defaultCats = ["À faire","À acheter","Idées"];
-  const [cats, setCats] = useLocalState("notes.cats", defaultCats);
-  const [active, setActive] = useLocalState("notes.active", cats[0]);
-  const [itemsByCat, setItemsByCat] = useLocalState("notes.items", {});
-  const [newItem, setNewItem] = useState("");
-
-  useEffect(()=>{
-    setItemsByCat(prev=>{
-      const next = {...prev};
-      cats.forEach(c=>{ if(!next[c]) next[c]=[]; });
-      return next;
-    });
-  }, [cats]);
-
-  function addItem(){
-    if(!newItem.trim()) return;
-    setItemsByCat(prev=>{
-      const next = {...prev};
-      next[active] = [...(next[active]||[]), { id: Math.random().toString(36).slice(2), text:newItem.trim(), done:false }];
-      return next;
-    });
-    setNewItem("");
-  }
-
-  function toggle(id){
-    setItemsByCat(prev=>{
-      const next={...prev};
-      next[active]=next[active].map(it=> it.id===id?{...it,done:!it.done}:it);
-      return next;
-    });
-  }
-
-  function remove(id){
-    setItemsByCat(prev=>{
-      const next={...prev};
-      next[active]=next[active].filter(it=>it.id!==id);
-      return next;
-    });
-  }
-
-  return (
-    <Card>
-      <H2>Notes</H2>
-      <div className="flex gap-2 overflow-x-auto">
-        {cats.map(c => (
-          <Button key={c} onClick={()=>setActive(c)} className={cls(active===c && "bg-black text-white border-black")}>{c}</Button>
-        ))}
-      </div>
-      <div className="mt-4 grid gap-2">
-        <div className="flex gap-2">
-          <Input value={newItem} onChange={e=>setNewItem(e.target.value)} placeholder={`Ajouter à "${active}"...`} />
-          <Button onClick={addItem} className="bg-black text-white border-black">Ajouter</Button>
-        </div>
-        <div className="grid gap-2 max-h-72 overflow-auto pr-2">
-          {(itemsByCat[active]||[]).map(it => (
-            <label key={it.id} className="flex items-center justify-between border rounded-xl px-3 py-2">
-              <span className="flex items-center gap-3">
-                <input type="checkbox" checked={it.done} onChange={()=>toggle(it.id)} />
-                <span className={cls(it.done && "line-through text-gray-400")}>{it.text}</span>
-              </span>
-              <Button className="text-red-600 border-red-400" onClick={()=>remove(it.id)}>Suppr</Button>
-            </label>
-          ))}
-          {(itemsByCat[active]||[]).length===0 && <div className="text-sm text-gray-500">Aucun élément.</div>}
-        </div>
-      </div>
-    </Card>
-  );
-}
-
-// Dashboard with score
-function Dashboard(){
-  const day = todayKey();
-  const hydrLogs = JSON.parse(localStorage.getItem("hydr.logs")||"{}");
-  const hydrGoal = JSON.parse(localStorage.getItem("hydr.goal")||"2500");
-  const ml = hydrLogs[day]?.ml ?? 0;
-  const hydrDone = ml>=hydrGoal;
-
-  const notes = JSON.parse(localStorage.getItem("notes.items")||"{}");
-  const notesDone = Object.values(notes).some(list=> (list||[]).length>0);
-
-  const look = JSON.parse(localStorage.getItem("look.done")||"{}");
-  const lookToday = look[day]||{};
-  const lookDone = Object.values(lookToday).some(v=>v);
-
-  const score = (hydrDone?20:0) + (notesDone?20:0) + (lookDone?20:0);
-
-  return (
-    <div className="grid gap-6">
       <Card>
-        <H2>Dashboard</H2>
-        <div className="text-3xl font-bold mb-2">Score quotidien : {score}/100</div>
-        <ul className="list-disc pl-5 space-y-1 text-sm">
-          <li>Hydratation : {hydrDone? "✅ Objectif atteint":"❌ Pas encore"}</li>
-          <li>Notes : {notesDone? "✅ Éléments notés":"❌ Vide"}</li>
-          <li>Lookmaxing : {lookDone? "✅ Tâches cochées":"❌ Rien pour l’instant"}</li>
-        </ul>
+        <H2>Historique (7 jours)</H2>
+        <SevenDayHydroChart goal={goalMl} logs={logsByDay} />
       </Card>
     </div>
   );
 }
+function SevenDayHydroChart({ goal, logs }){
+  const days = [...Array(7)].map((_,i)=>{
+    const d = new Date(); d.setDate(d.getDate()-(6-i));
+    const key = d.toISOString().slice(0,10);
+    return { label: d.toLocaleDateString(undefined,{ weekday:"short"}), ml: logs[key]?.ml ?? 0 };
+  });
+  return (
+    <div className="grid grid-cols-7 gap-2 items-end h-40">
+      {days.map(({label,ml},i)=>{
+        const pct = Math.min(100, (ml/(goal||1))*100);
+        return (
+          <div key={i} className="grid gap-1">
+            <div className="w-full bg-gray-200 dark:bg-gray-700 rounded-md h-28 overflow-hidden">
+              <div className="bg-black dark:bg-white w-full" style={{height: pct+"%"}} />
+            </div>
+            <div
